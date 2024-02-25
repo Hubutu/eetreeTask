@@ -1,0 +1,94 @@
+module TopModule
+(
+	clk				,    //时钟
+	rst				,    //复位
+	start			,    //启动按键
+	stop            ,    //暂停按键
+	increment       ,    //增量按键
+	seg_led_1		,    //数码管1
+	seg_led_2		,    //数码管2
+
+);
+
+  input 	clk,rst;
+	input	start,stop;   
+	input   increment;
+ 
+	output 	[8:0]	seg_led_1,seg_led_2;
+ 
+	wire		clk1h;        //1Hz时钟
+	reg			start_flag;    //按键标志位
+	reg			stop_flag;    //按键标志位	
+  reg			increment_flag=0;    //按键标志位	
+	reg   		[6:0]   seg		[9:0];  
+	reg			[3:0]	cnt_ge;      //个位
+	reg			[3:0]	cnt_shi;     //十位
+	
+	// 用于分出一个10Hz的频率
+	divide #(.WIDTH(32),.N(1200000)) U1 ( 
+			.clk(clk),
+			.rst_n(rst),      
+			.clkout(clk1h)
+			); 
+	
+	//数码管数字显示
+	Display U2 (.seg_led_1(seg_led_1),
+	.seg_led_2(seg_led_2),
+	.cnt_ge(cnt_ge),
+	.cnt_shi(cnt_shi)
+	);	
+	
+	//按键标志位改变
+	always @ (negedge start or negedge stop)
+		if(!rst==1)
+			start_flag <= 0;
+		else begin
+		    if(!start)
+		        start_flag <= 1'd1;
+		    else if(!stop)
+		        start_flag <=1'd0;
+
+		end
+
+    
+	always @ ( posedge clk1h or negedge rst) begin
+		
+		if (!rst == 1) begin
+			  cnt_ge <= 4'd0;
+			  cnt_shi <= 4'd0;
+		end
+			
+    else if(start_flag == 1) begin
+        if(cnt_shi==9 && cnt_ge==9) begin
+			      cnt_shi <= 0;
+			      cnt_ge <=0;
+		    end
+	      else if(cnt_ge==9)begin
+		        cnt_ge <= 4'd0;
+		        cnt_shi <= cnt_shi+1;end
+	      else
+	          cnt_ge <= cnt_ge+1;
+			
+	  end   
+
+    else if(start_flag == 0  && increment) begin
+        if(increment_flag) begin
+    	      if(cnt_shi==9 && cnt_ge==9) begin
+			          cnt_shi <= 0;
+			          cnt_ge <=0;
+		        end
+	          else if(cnt_ge==9)begin
+		            cnt_ge <= 4'd0;
+		            cnt_shi <= cnt_shi+1;end
+	          else
+	              cnt_ge <= cnt_ge+1;
+			  increment_flag <= 1'd0;
+			 end
+	 end
+
+   else if(!increment)
+       increment_flag <= 1'd1;
+   end
+	
+endmodule
+	
